@@ -30,3 +30,5 @@ kbd{display:inline-grid;place-items:center;min-width:22px;height:22px;padding:0 
 
 /* Brief close-up before the retry screen; no strobing. */
 .stage[data-scare=true] .hud,.stage[data-scare=true] .hint{visibility:hidden}.stage[data-scare=true] .waterfx{opacity:1;background:radial-gradient(ellipse at center,transparent 30%,#200507b8 90%)}
+
+.stage[data-level='6'][data-mode='play'] canvas{filter:brightness(.48)}
