@@ -20,23 +20,25 @@ const pads=[
 pads.splice(11,0,{x:-.45,z:59.92,w:3.74,d:2.5,y:.39});
 // Independent bounded paths: each moving pad stays in its own longitudinal lane.
 for(const [i,a] of pads.entries()){
- a.homeX=a.x;a.homeZ=a.z;
+ a.homeX=a.x;a.homeZ=a.z;a.homeY=a.y;
  a.ax=a.kind?0:(i%2?1.15:.42);
  a.az=a.kind?0:(i%2?.12:.48);
  a.phase=i*1.7;a.rate=.65+(i%3)*.13;
 }
 function movePads(t,carry){
  for(const a of pads){
-  const x=a.homeX+a.ax*sin(t*a.rate*(level===3?1.65:1)+a.phase),z=a.homeZ+a.az*sin(t*a.rate*(level===3?1.65:1)+a.phase+.8);
-  if(carry&&p.ground&&p.land===a){p.x+=x-a.x;p.z+=z-a.z;}
-  a.x=x;a.z=z;
+  const time=level===8||level===10?t+.8*sin(t*1.1):t;
+  const x=a.homeX+a.ax*sin(time*a.rate*([3,10].includes(level)?1.65:1)+a.phase),z=a.homeZ+a.az*sin(time*a.rate*([3,10].includes(level)?1.65:1)+a.phase+.8);
+  const y=a.homeY+(!a.kind&&level===7?.22*sin(t*1.4+a.phase):0);
+  if(carry&&p.ground&&p.land===a){p.x+=x-a.x;p.z+=z-a.z;p.y=y;}
+  a.x=x;a.z=z;a.y=y;
  }
 }
-let level=1;const totalLevels=3;
+let level=1;const totalLevels=10;const names=['Ночной бассейн','Безумные стрелки','Безумная скорость','Антигравитация','Проклятый лёд','Тёмное измерение','Космический бассейн','Ловушка времени','Ярость тыквы','Последний кошмар'];
 const scene=window.PumpkinScene(cv,pads);
 const arrows=document.createElement('div');arrows.style.cssText='position:absolute;inset:0;pointer-events:none;z-index:2;overflow:hidden';stage.appendChild(arrows);
 const markers=pads.filter(a=>!a.kind).map((a,i)=>{a.dir=[[1,0],[0,1],[-1,0],[0,-1]][i%4];const e=document.createElement('span');e.textContent='➜';e.style.cssText='position:absolute;color:#ffdc76;font:bold 32px system-ui;text-shadow:0 2px 5px black;transform-origin:center;';arrows.appendChild(e);return {a,e};});
-function drawArrows(cam){arrows.hidden=level!==2||mode!=='play';if(arrows.hidden)return;const w=stage.clientWidth,h=stage.clientHeight,f=h*(aspect<.8?.52:.75);function project(x,y,z){x-=cam.x;y-=cam.y;z-=cam.z;const along=sin(cam.yaw)*x+cos(cam.yaw)*z,depth=sin(cam.pitch)*y+cos(cam.pitch)*along;return [w/2+f*(cos(cam.yaw)*x-sin(cam.yaw)*z)/depth,h/2-f*(cos(cam.pitch)*y-sin(cam.pitch)*along)/depth,depth];}for(const {a,e} of markers){const A=project(a.x,a.y+.08,a.z),B=project(a.x+a.dir[0]*.6,a.y+.08,a.z+a.dir[1]*.6);e.hidden=A[2]<.3||B[2]<.3;if(!e.hidden){e.style.left=A[0]+'px';e.style.top=A[1]+'px';e.style.transform='translate(-50%,-50%) rotate('+Math.atan2(B[1]-A[1],B[0]-A[0])+'rad) scale('+clamp(3/A[2],.25,2)+')';}}}
+function drawArrows(cam){arrows.hidden=![2,10].includes(level)||mode!=='play';if(arrows.hidden)return;const w=stage.clientWidth,h=stage.clientHeight,f=h*(aspect<.8?.52:.75);function project(x,y,z){x-=cam.x;y-=cam.y;z-=cam.z;const along=sin(cam.yaw)*x+cos(cam.yaw)*z,depth=sin(cam.pitch)*y+cos(cam.pitch)*along;return [w/2+f*(cos(cam.yaw)*x-sin(cam.yaw)*z)/depth,h/2-f*(cos(cam.pitch)*y-sin(cam.pitch)*along)/depth,depth];}for(const {a,e} of markers){const A=project(a.x,a.y+.08,a.z),B=project(a.x+a.dir[0]*.6,a.y+.08,a.z+a.dir[1]*.6);e.hidden=A[2]<.3||B[2]<.3;if(!e.hidden){e.style.left=A[0]+'px';e.style.top=A[1]+'px';e.style.transform='translate(-50%,-50%) rotate('+Math.atan2(B[1]-A[1],B[0]-A[0])+'rad) scale('+clamp(3/A[2],.25,2)+')';}}}
 const keys=new Set();let p,m,mode='menu',clock=0,played=0,last=0,scale=1,aspect=1,acc=0,checkpoint=false,best=0,hint='',hintLeft=0,jumpQueued=0,ui='',soundOn=true,audio=null,wasLocked=false;
 let swipe=null,stick=null,jumpId=null,move={x:0,z:0},scare=null,lastBeat=0;
 const coarse=()=>matchMedia('(pointer:coarse)').matches||navigator.maxTouchPoints>0&&window.innerWidth<=950;
@@ -74,7 +76,7 @@ function setMode(next){
  stage.dataset.mode=next; $('overlay').hidden=next==='play';$('touchControls').hidden=next!=='play'||!coarse();$('pause').disabled=next!=='play';
  if(next!=='play'){
   if(document.pointerLockElement===look&&document.exitPointerLock)document.exitPointerLock();
-  const a=boxes[next];$('overline').textContent=a[0];$('title').innerHTML=a[1];$('message').textContent=next==='caught'&&checkpoint?'Следующая попытка начнётся со спасательного островка.':a[2];$('go').textContent=a[3];
+  const a=boxes[next];$('overline').textContent=next==='next'?'Уровень '+level+' пройден · Далее: '+names[level]:a[0];$('title').innerHTML=a[1];$('message').textContent=next==='caught'&&checkpoint?'Следующая попытка начнётся со спасательного островка.':a[2];$('go').textContent=a[3];
  }
 }
 function enableMouse(){
@@ -86,7 +88,7 @@ $('go').onclick=()=>{
  if(soundOn){try{audio??=new (window.AudioContext||window.webkitAudioContext)();audio.resume().catch(()=>{});}catch{}}
  if(prev==='next')level++;else if(prev==='win')level=1;
  if(prev!=='paused')reset(prev==='caught'&&checkpoint);
- setMode('play');enableMouse();if(prev==='next')say(level===2?'Стрелки сдвигают тебя! Не стой на месте.':'Платформы и монстр стали быстрее!',5);
+ setMode('play');enableMouse();stage.dataset.level=String(level);if(prev==='next')say('Уровень '+level+': '+names[level-1],5);
  if(prev==='menu')say(coarse()?'Левой рукой двигайся, правой осматривайся. Жми кнопку со стрелкой, чтобы прыгнуть.':'W A S D — ходьба. Мышь — обзор. Пробел — прыжок.',3.4);
  if(prev==='caught'&&checkpoint)say('Спасательный островок. Продолжаем отсюда.',2.6);
 };
@@ -162,7 +164,7 @@ function beep(kind){
  try{
   audio??=new (window.AudioContext||window.webkitAudioContext)();if(audio.state==='suspended')audio.resume().catch(()=>{});
   if(kind==='caught'){const t=audio.currentTime,len=.95,buffer=audio.createBuffer(1,Math.floor(audio.sampleRate*len),audio.sampleRate),d=buffer.getChannelData(0);let phase=0;for(let i=0;i<d.length;i++){const x=i/audio.sampleRate;phase+=TAU*(290+150*sin(x*8)+45*sin(x*83))/audio.sampleRate;const env=Math.min(1,x/.035)*Math.pow(1-x/len,1.3);d[i]=env*(.45*sin(phase)+.23*sin(phase*2.01)+.13*sin(phase*3.04)+.19*(Math.random()*2-1));}const src=audio.createBufferSource(),filter=audio.createBiquadFilter(),gain=audio.createGain();src.buffer=buffer;filter.type='bandpass';filter.frequency.value=1450;filter.Q.value=.85;gain.gain.value=.58;src.connect(filter).connect(gain).connect(audio.destination);src.start(t);return;}
-  const table={jump:[225,377,.12,'sine',.10],step:[110,64,.095,'triangle',.032],splash:[180,42,.42,'triangle',.19],caught:[420,48,.85,'sawtooth',.22],pulse:[76,35,.20,'sine',.18],save:[480,770,.34,'sine',.16],win:[503,988,.62,'triangle',.14]};
+  const table={growl:[95,42,.23,'sawtooth',.085],jump:[225,377,.12,'sine',.10],step:[110,64,.095,'triangle',.032],splash:[180,42,.42,'triangle',.19],caught:[420,48,.85,'sawtooth',.22],pulse:[76,35,.20,'sine',.18],save:[480,770,.34,'sine',.16],win:[503,988,.62,'triangle',.14]};
   const [a,b,len,w,amp]=table[kind],t=audio.currentTime,o=audio.createOscillator(),g=audio.createGain();o.type=w;o.frequency.setValueAtTime(a,t);o.frequency.exponentialRampToValueAtTime(b,t+len);
   g.gain.setValueAtTime(.0001,t);g.gain.exponentialRampToValueAtTime(amp,t+.014);g.gain.exponentialRampToValueAtTime(.0001,t+len);
   o.connect(g).connect(audio.destination);o.start(t);o.stop(t+len+.01);
@@ -193,9 +195,9 @@ function step(dt){
  const pitchKeys=down('ArrowUp')-down('ArrowDown');
  rotate(yawKeys*dt*326,-pitchKeys*dt*350,.0044);
  const rx=move.x+down('KeyD')-down('KeyA'),rz=move.z+down('KeyW')-down('KeyS'),l=Math.max(1,Math.hypot(rx,rz)), s=sin(p.yaw),c=cos(p.yaw);
- const speed=p.wet?3.48:7.65, accel=p.wet?11:p.ground?17:10, f=Math.min(1,dt*accel);
+ const speed=p.wet?3.48:7.65, accel=p.wet?11:p.ground?([5,10].includes(level)?3.5:17):10, f=Math.min(1,dt*accel);
  p.vx=mix(p.vx,(rx*c+rz*s)*speed/l,f);p.vz=mix(p.vz,(rz*c-rx*s)*speed/l,f);
- if(level===2&&p.ground&&p.land?.dir){p.x+=p.land.dir[0]*2.5*dt;p.z+=p.land.dir[1]*2.5*dt;}
+ if([2,10].includes(level)&&p.ground&&p.land?.dir){p.x+=p.land.dir[0]*2.5*dt;p.z+=p.land.dir[1]*2.5*dt;}
  p.x=clamp(p.x+p.vx*dt,-8.05,8.05);p.z=clamp(p.z+p.vz*dt,-7.9,68.0);
  if(p.wet){
   p.wetAge+=dt;
@@ -211,20 +213,20 @@ function step(dt){
   }
   if(p.wet){
    const dx=p.x-m.x,dz=p.z-m.z,d=Math.hypot(dx,dz);
-   m.kick=Math.max(0,m.kick-dt);m.speed=mix(m.speed,m.kick>0?1.0:level===3?12:9.25,Math.min(1,dt*3.5));
+   m.kick=Math.max(0,m.kick-dt);m.speed=mix(m.speed,m.kick>0?1.0:[9,10].includes(level)?14:level===3?12:9.25,Math.min(1,dt*3.5));
    const amount=Math.min(d,m.speed*dt)/Math.max(.001,d);
    m.x+=dx*amount;m.z+=dz*amount;m.y=mix(m.y,-.40,Math.min(1,dt*6.9));m.chase=mix(m.chase,1,Math.min(1,dt*7));
-   if(p.wetAge-lastBeat>.46&&p.wetAge>.21){lastBeat=p.wetAge;beep('pulse')}
+   if(p.wetAge-lastBeat>clamp(d*.08,.18,.85)&&p.wetAge>.21){lastBeat=p.wetAge;beep('growl')}
    if(d<.76&&p.wetAge>.62){caught();return;}
   }
  }else{
   if(p.ground&&(!p.land||!hit(p.land,p.x,p.z,.11))){p.ground=false;p.land=null}
   if(p.ground)p.coyote=.1;else p.coyote=Math.max(0,p.coyote-dt);
   if(jumpQueued>0&&(p.ground||p.coyote>0)&&p.climbDelay<=0){
-   jumpQueued=0;p.ground=false;p.land=null;p.coyote=0;p.vy=7.24;beep('jump');
+   jumpQueued=0;p.ground=false;p.land=null;p.coyote=0;p.vy=level===4?8.2:7.24;beep('jump');
   }
   if(!p.ground){
-   const prev=p.y;p.vy-=19.8*dt;p.y+=p.vy*dt;
+   const prev=p.y;p.vy-=(level===4?13.5:19.8)*dt;p.y+=p.vy*dt;
    if(p.vy<=0){
     const a=pads.find(a=>prev>=a.y&&p.y<=a.y&&hit(a,p.x,p.z,.13));
     if(a){land(a);beep('step')}
@@ -261,9 +263,9 @@ function frame(ts){
   mm={x:2.73,y:-.23+sin(clock*1.7)*.08,z:5.0,yaw:.36+sin(clock*1.75)*.04,threat:.28};
  }
  if(mode==='caught'&&scare){
-  scare.t+=ms;if(scare.t>=1.65){delete stage.dataset.scare;$('overlay').hidden=false;} const t=reduced?1:1-Math.exp(-scare.t*28);
+  scare.t+=ms;if(scare.t>=1.85){delete stage.dataset.scare;$('overlay').hidden=false;} const t=reduced?1:1-Math.exp(-scare.t*28);
   cam={x:mix(scare.origin.x,scare.target.x,t),y:mix(scare.origin.y,scare.target.y,t),z:mix(scare.origin.z,scare.target.z,t),yaw:lerpAngle(scare.origin.yaw,scare.target.yaw,t),pitch:mix(scare.origin.pitch,scare.target.pitch,t)};
-  mm={...scare.m,yaw:Math.atan2(scare.m.x-cam.x,scare.m.z-cam.z)}; if(scare.t<1.65){const lunge=reduced?0:.32*Math.sin(Math.min(1,scare.t/.24)*Math.PI/2);mm.x-=sin(mm.yaw)*lunge;mm.z-=cos(mm.yaw)*lunge;mm.y+=.12;cam.pitch=.45;}
+  mm={...scare.m,yaw:Math.atan2(scare.m.x-cam.x,scare.m.z-cam.z)}; if(scare.t<1.85){const lunge=reduced?0:.32*Math.sin(Math.min(1,scare.t/.24)*Math.PI/2);mm.x-=sin(mm.yaw)*lunge;mm.z-=cos(mm.yaw)*lunge;mm.y+=.12;cam.pitch=.45;}
  }
  if(cv.width&&cv.height)scene(cam,mm,clock,aspect);
  drawArrows(cam);updateHUD();requestAnimationFrame(frame);
