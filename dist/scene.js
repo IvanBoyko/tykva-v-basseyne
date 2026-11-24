@@ -278,7 +278,7 @@ function glEngine(canvas,world,monster,padMeshes){
   const sy=(aspect<.8?1.04:1.50),sx=sy/aspect;
   gl.uniform4f(u.uCam,cam.x,cam.y,cam.z,cam.yaw);gl.uniform4f(u.uView,cam.pitch,sx,sy,0);
   gl.uniform4f(u.uObj,0,0,0,0);gl.uniform3f(u.uAnim,t,0,0);render(A);
-  for(const {a,mesh} of P){gl.uniform4f(u.uObj,a.x-a.homeX,0,a.z-a.homeZ,0);render(mesh);}
+  for(const {a,mesh} of P){gl.uniform4f(u.uObj,a.x-a.homeX,a.y-a.homeY,a.z-a.homeZ,0);render(mesh);}
   gl.uniform4f(u.uObj,m.x,m.y,m.z,m.yaw);gl.uniform3f(u.uAnim,t,1,m.threat);render(M);
  };
 }
@@ -372,7 +372,7 @@ function swEngine(canvas,world,monster,padMeshes){
   else{
    pixels.fill(clearColor);zbuf.fill(0);render(a,null);cacheCam={...cam};cachePixels.set(pixels);cacheDepth.set(zbuf);
   }
-  for(const {a,list} of P)render(list,{x:a.x-a.homeX,y:0,z:a.z-a.homeZ,yaw:0,threat:0});
+  for(const {a,list} of P)render(list,{x:a.x-a.homeX,y:a.y-a.homeY,z:a.z-a.homeZ,yaw:0,threat:0});
   render(b,obj);
   const du=1/f,fx=sx*cp,fz=sy*cp;
   for(let y=0;y<h;y++){
