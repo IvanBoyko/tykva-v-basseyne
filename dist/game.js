@@ -28,13 +28,13 @@ for(const [i,a] of pads.entries()){
 function movePads(t,carry){
  for(const a of pads){
   const time=level===8||level===10?t+.8*sin(t*1.1):t;
-  const x=a.homeX+a.ax*sin(time*a.rate*([3,10].includes(level)?1.65:1)+a.phase),z=a.homeZ+a.az*sin(time*a.rate*([3,10].includes(level)?1.65:1)+a.phase+.8);
+  const x=a.homeX+a.ax*sin(time*a.rate*(level===2?0:level===10?1.65:1)+a.phase),z=a.homeZ+a.az*sin(time*a.rate*(level===2?0:level===10?1.65:1)+a.phase+.8);
   const y=a.homeY+(!a.kind&&level===7?.22*sin(t*1.4+a.phase):0);
   if(carry&&p.ground&&p.land===a){p.x+=x-a.x;p.z+=z-a.z;p.y=y;}
   a.x=x;a.z=z;a.y=y;
  }
 }
-let level=1;const totalLevels=10;const names=['Ночной бассейн','Безумные стрелки','Безумная скорость','Антигравитация','Проклятый лёд','Тёмное измерение','Космический бассейн','Ловушка времени','Ярость тыквы','Последний кошмар'];
+let level=1;const totalLevels=10;const names=['Заброшенный бассейн','Проклятый конвейер','Супергерой','Лунная станция','Ледяная пещера','Измерение призраков','Чужая планета','Разлом времени','Логово чудовища','Последнее измерение'];
 const scene=window.PumpkinScene(cv,pads);
 const arrows=document.createElement('div');arrows.style.cssText='position:absolute;inset:0;pointer-events:none;z-index:2;overflow:hidden';stage.appendChild(arrows);
 const markers=pads.filter(a=>!a.kind).map((a,i)=>{a.dir=[[1,0],[0,1],[-1,0],[0,-1]][i%4];const e=document.createElement('span');e.textContent='➜';e.style.cssText='position:absolute;color:#ffdc76;font:bold 32px system-ui;text-shadow:0 2px 5px black;transform-origin:center;';arrows.appendChild(e);return {a,e};});
@@ -88,7 +88,7 @@ $('go').onclick=()=>{
  if(soundOn){try{audio??=new (window.AudioContext||window.webkitAudioContext)();audio.resume().catch(()=>{});}catch{}}
  if(prev==='next')level++;else if(prev==='win')level=1;
  if(prev!=='paused')reset(prev==='caught'&&checkpoint);
- setMode('play');enableMouse();stage.dataset.level=String(level);if(prev==='next')say('Уровень '+level+': '+names[level-1],5);
+ setMode('play');enableMouse();stage.dataset.level=String(level);if(prev==='next')say('Уровень '+level+': '+names[level-1]+(level===3?' — суперскорость и суперпрыжок!':''),5);
  if(prev==='menu')say(coarse()?'Левой рукой двигайся, правой осматривайся. Жми кнопку со стрелкой, чтобы прыгнуть.':'W A S D — ходьба. Мышь — обзор. Пробел — прыжок.',3.4);
  if(prev==='caught'&&checkpoint)say('Спасательный островок. Продолжаем отсюда.',2.6);
 };
@@ -195,7 +195,7 @@ function step(dt){
  const pitchKeys=down('ArrowUp')-down('ArrowDown');
  rotate(yawKeys*dt*326,-pitchKeys*dt*350,.0044);
  const rx=move.x+down('KeyD')-down('KeyA'),rz=move.z+down('KeyW')-down('KeyS'),l=Math.max(1,Math.hypot(rx,rz)), s=sin(p.yaw),c=cos(p.yaw);
- const speed=p.wet?3.48:7.65, accel=p.wet?11:p.ground?([5,10].includes(level)?3.5:17):10, f=Math.min(1,dt*accel);
+ const speed=p.wet?3.48:level===3?12:7.65, accel=p.wet?11:p.ground?([5,10].includes(level)?3.5:17):10, f=Math.min(1,dt*accel);
  p.vx=mix(p.vx,(rx*c+rz*s)*speed/l,f);p.vz=mix(p.vz,(rz*c-rx*s)*speed/l,f);
  if([2,10].includes(level)&&p.ground&&p.land?.dir){p.x+=p.land.dir[0]*2.5*dt;p.z+=p.land.dir[1]*2.5*dt;}
  p.x=clamp(p.x+p.vx*dt,-8.05,8.05);p.z=clamp(p.z+p.vz*dt,-7.9,68.0);
@@ -223,7 +223,7 @@ function step(dt){
   if(p.ground&&(!p.land||!hit(p.land,p.x,p.z,.11))){p.ground=false;p.land=null}
   if(p.ground)p.coyote=.1;else p.coyote=Math.max(0,p.coyote-dt);
   if(jumpQueued>0&&(p.ground||p.coyote>0)&&p.climbDelay<=0){
-   jumpQueued=0;p.ground=false;p.land=null;p.coyote=0;p.vy=level===4?8.2:7.24;beep('jump');
+   jumpQueued=0;p.ground=false;p.land=null;p.coyote=0;p.vy=level===3?11:level===4?8.2:7.24;beep('jump');
   }
   if(!p.ground){
    const prev=p.y;p.vy-=(level===4?13.5:19.8)*dt;p.y+=p.vy*dt;
