@@ -32,3 +32,15 @@ kbd{display:inline-grid;place-items:center;min-width:22px;height:22px;padding:0 
 .stage[data-scare=true] .hud,.stage[data-scare=true] .hint{visibility:hidden}.stage[data-scare=true] .waterfx{opacity:1;background:radial-gradient(ellipse at center,transparent 30%,#200507b8 90%)}
 
 .stage[data-level='6'][data-mode='play'] canvas{filter:brightness(.48)}
+
+/* Distinct dark dimensions; retain readable controls and platform edges. */
+.stage[data-mode=play] canvas{filter:brightness(.72) saturate(.8)}
+.stage[data-level='2'][data-mode=play] canvas{filter:brightness(.67) sepia(.55)}
+.stage[data-level='3'][data-mode=play] canvas{filter:brightness(.74) hue-rotate(35deg) saturate(1.5)}
+.stage[data-level='4'][data-mode=play] canvas{filter:brightness(.65) grayscale(.85)}
+.stage[data-level='5'][data-mode=play] canvas{filter:brightness(.76) hue-rotate(24deg) saturate(1.6)}
+.stage[data-level='6'][data-mode=play] canvas{filter:brightness(.48) hue-rotate(65deg)}
+.stage[data-level='7'][data-mode=play] canvas{filter:brightness(.72) hue-rotate(105deg) saturate(1.5)}
+.stage[data-level='8'][data-mode=play] canvas{filter:brightness(.68) hue-rotate(160deg)}
+.stage[data-level='9'][data-mode=play] canvas{filter:brightness(.65) hue-rotate(195deg) saturate(1.4)}
+.stage[data-level='10'][data-mode=play] canvas{filter:brightness(.58) hue-rotate(250deg)}
