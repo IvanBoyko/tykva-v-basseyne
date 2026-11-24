@@ -33,7 +33,7 @@ function movePads(t,carry){
  }
 }
 const scene=window.PumpkinScene(cv,pads);
-const keys=new Set();let p,m,mode='menu',clock=0,played=0,last=0,scale=1,aspect=1,acc=0,checkpoint=false,best=0,hint='',hintLeft=0,jumpQueued=0,ui='',soundOn=false,audio=null,wasLocked=false;
+const keys=new Set();let p,m,mode='menu',clock=0,played=0,last=0,scale=1,aspect=1,acc=0,checkpoint=false,best=0,hint='',hintLeft=0,jumpQueued=0,ui='',soundOn=true,audio=null,wasLocked=false;
 let swipe=null,stick=null,jumpId=null,move={x:0,z:0},scare=null,lastBeat=0;
 const coarse=()=>matchMedia('(pointer:coarse)').matches||navigator.maxTouchPoints>0&&window.innerWidth<=950;
 const reduced=matchMedia('(prefers-reduced-motion:reduce)').matches;
@@ -78,6 +78,7 @@ function enableMouse(){
 }
 $('go').onclick=()=>{
  const prev=mode;
+ if(soundOn){try{audio??=new (window.AudioContext||window.webkitAudioContext)();audio.resume().catch(()=>{});}catch{}}
  if(prev!=='paused')reset(prev==='caught'&&checkpoint);
  setMode('play');enableMouse();
  if(prev==='menu')say(coarse()?'Левой рукой двигайся, правой осматривайся. Жми кнопку со стрелкой, чтобы прыгнуть.':'W A S D — ходьба. Мышь — обзор. Пробел — прыжок.',3.4);
@@ -154,10 +155,11 @@ function beep(kind){
  if(!soundOn)return;
  try{
   audio??=new (window.AudioContext||window.webkitAudioContext)();if(audio.state==='suspended')audio.resume().catch(()=>{});
-  const table={jump:[225,377,.12,'sine',.10],step:[110,64,.095,'triangle',.032],splash:[180,42,.42,'triangle',.19],caught:[340,54,.85,'sawtooth',.13],pulse:[76,35,.20,'sine',.18],save:[480,770,.34,'sine',.16],win:[503,988,.62,'triangle',.14]};
+  const table={jump:[225,377,.12,'sine',.10],step:[110,64,.095,'triangle',.032],splash:[180,42,.42,'triangle',.19],caught:[420,48,.85,'sawtooth',.22],pulse:[76,35,.20,'sine',.18],save:[480,770,.34,'sine',.16],win:[503,988,.62,'triangle',.14]};
   const [a,b,len,w,amp]=table[kind],t=audio.currentTime,o=audio.createOscillator(),g=audio.createGain();o.type=w;o.frequency.setValueAtTime(a,t);o.frequency.exponentialRampToValueAtTime(b,t+len);
   g.gain.setValueAtTime(.0001,t);g.gain.exponentialRampToValueAtTime(amp,t+.014);g.gain.exponentialRampToValueAtTime(.0001,t+len);
   o.connect(g).connect(audio.destination);o.start(t);o.stop(t+len+.01);
+  if(kind==='caught'){const n=audio.createOscillator(),v=audio.createGain();n.type='triangle';n.frequency.setValueAtTime(740,t);n.frequency.exponentialRampToValueAtTime(95,t+.65);v.gain.setValueAtTime(.001,t);v.gain.linearRampToValueAtTime(.10,t+.025);v.gain.exponentialRampToValueAtTime(.001,t+.7);n.connect(v).connect(audio.destination);n.start(t);n.stop(t+.72);}
  }catch{}
 }
 $('sound').onclick=()=>{soundOn=!soundOn;soundIcon();if(soundOn)beep('save')};
@@ -165,11 +167,7 @@ const hit=(a,x,z,r=0)=>Math.abs(x-a.x)<=a.w*.5+r&&Math.abs(z-a.z)<=a.d*.5+r;
 function distPad(a,x,z){return Math.hypot(Math.max(0,Math.abs(x-a.x)-a.w*.5),Math.max(0,Math.abs(z-a.z)-a.d*.5))}
 function wet(){
  p.wet=true;p.wetAge=0;p.y=-.67;p.vy=0;p.land=null;p.coyote=0;hintLeft=0;p.ground=false;lastBeat=0;
- const d=Math.hypot(m.x-p.x,m.z-p.z);
- if(d>6.35||d<2.8){
-  m.x=clamp(p.x+(p.x>4?-4.4:4.4),-7.9,7.9);
-  m.z=clamp(p.z+(p.z<15?2.8:-3.15),2.2,61.78);
- }
+ // Chase from the monster's actual patrol position, without teleporting.
  m.kick=.19;m.speed=1.15;beep('splash');
 }
 function land(a){
@@ -226,11 +224,11 @@ function step(dt){
    if(!p.ground&&p.y<=-.035)wet();
   }
   if(!p.wet){
-   const tx=2.45+sin(played*.58)*1.45,tz=clamp(p.z+7.75+sin(played*.44)*1.35,3.6,61.1),dx=tx-m.x,dz=tz-m.z,dist=Math.hypot(dx,dz),k=Math.min(1,dt*3.6/Math.max(.001,dist));
-   m.x+=dx*k;m.z+=dz*k;m.y=mix(m.y,-1.78,Math.min(1,dt*2.8));m.chase=mix(m.chase,0,Math.min(1,dt*3));
+   const tx=5.4*sin(played*.24+.7),tz=32+27*sin(played*.12-1.1),dx=tx-m.x,dz=tz-m.z,dist=Math.hypot(dx,dz),k=Math.min(1,dt*3.6/Math.max(.001,dist));
+   m.x+=dx*k;m.z+=dz*k;m.y=mix(m.y,-.95,Math.min(1,dt*2.8));m.chase=mix(m.chase,0,Math.min(1,dt*3));
   }
  }
- m.yaw=lerpAngle(m.yaw,Math.atan2(m.x-p.x,m.z-p.z),Math.min(1,dt*11));
+ m.yaw=lerpAngle(m.yaw,p.wet?Math.atan2(m.x-p.x,m.z-p.z):Math.atan2(-5.4*.24*cos(played*.24+.7),-27*.12*cos(played*.12-1.1)),Math.min(1,dt*11));
  const moving=Math.hypot(p.vx,p.vz);
  if(p.ground&&moving>1.2){const prev=p.bob;p.bob+=moving*dt*1.65;if(Math.floor(prev/Math.PI)!==Math.floor(p.bob/Math.PI))beep('step')}
  else if(p.wet)p.bob+=dt*6;
