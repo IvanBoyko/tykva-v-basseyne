@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#08151b">
+<title>Тыква в бассейне</title>
+<meta name="description" content="Побег от тыквенного монстра в огромном ночном бассейне. Игра от первого лица.">
+<link rel="stylesheet" href="./style.css">
+<script defer src="./scene.js"></script>
+<script defer src="./game.js"></script>
+</head>
+<body>
+<div class="app">
+<header class="top">
+<div class="brand"><span class="badge" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12 7C7 3 3 8 3 13c0 5 4 7 9 7s9-2 9-7c0-5-4-10-9-6Zm0 0V5l2-2M8 12l2 1m6-1-2 1m-3 3h2"/></svg></span><span>Тыква в бассейне<small>Игра от первого лица</small></span></div>
+<div class="actions"><button class="icon" id="sound" aria-pressed="false" aria-label="Включить звук" title="Включить звук"></button>
+<button class="icon" id="pause" aria-label="Пауза" title="Пауза" disabled><svg viewBox="0 0 24 24"><path d="M8 6v12m8-12v12"/></svg></button></div>
+</header>
+<main class="stage" id="stage" data-mode="menu">
+<canvas id="game" aria-label="Трёхмерный крытый бассейн от первого лица"></canvas>
+<div class="shade" aria-hidden="true"></div><div class="waterfx" aria-hidden="true"></div>
+<div class="hud">
+<div class="chip" id="status"><i></i><span id="statusText">Берег безопасен</span></div>
+<div class="chip progress"><span id="progressText">Путь 0%</span><div class="rail" aria-hidden="true"><b id="bar"></b></div></div>
+</div>
+<span class="crosshair" aria-hidden="true"></span>
+<div class="look" id="look" aria-hidden="true"></div>
+<div class="controls" id="touchControls" aria-label="Управление на телефоне" hidden>
+<div class="stick-area" id="stick" role="group" aria-label="Джойстик для движения"><div class="stick-base" id="stickBase"><b id="nub"></b></div></div>
+<button class="jump" id="jump" aria-label="Прыжок"><svg viewBox="0 0 24 24"><path d="M12 20V5m-6 6 6-6 6 6"/></svg></button>
+</div>
+<div class="hint" id="hint" aria-live="polite" hidden></div>
+<section class="overlay" id="overlay" aria-labelledby="title">
+<div class="panel"><span class="eyebrow" id="overline">Ночной заплыв · 3D</span><h1 id="title">Тыква в <em>бассейне</em></h1>
+<p id="message">Перепрыгивай с платформы на платформу. Тронешь воду — он услышит всплеск.</p>
+<button class="main" id="go">Начать игру</button></div>
+</section>
+</main>
+<footer class="help" aria-label="Как играть">
+<div class="deskhelp"><span><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> Ходьба</span><span><svg viewBox="0 0 24 24"><rect x="6" y="3" width="12" height="18" rx="6"/><path d="M12 3v6"/></svg> Мышь — обзор</span><span><kbd class="wide">Пробел</kbd> Прыжок</span></div>
+<div class="phonehelp"><span>Левый палец — ходьба</span><span>Правый палец — обзор</span></div>
+<div class="objective"><i></i> Цель — добраться до выхода</div>
+</footer>
+</div>
+</body>
+</html>
