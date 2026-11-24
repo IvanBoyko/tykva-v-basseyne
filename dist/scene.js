@@ -33,9 +33,10 @@ function builder(){
  return {data,tri,quad,box,oval};
 }
 function seeded(k){return (sin(k*137.923+8.3)*43758.5453)%1+.5}
-function hall(pads){
+function hall(pads,onlyPads=false){
  const B=builder(), {box,quad,tri}=B;
  const floorTop=.47, wallStart=-9, wallEnd=70, poolBegin=2, poolEnd=62;
+ if(!onlyPads){
  box(-11,-1.45,wallStart,11,-1.3,wallEnd,'0c2632');
  box(-11,7.3,wallStart,11,7.65,wallEnd,'1b303b');
  box(-11,.36,wallStart,-10.78,7.32,wallEnd,'193442');
@@ -90,6 +91,7 @@ function hall(pads){
   const i=Math.round(z/.7);
   for(const x of [-6.65,6.65])box(x-.095,.035,z,x+.095,.104,z+.37,i%8<5?'4daab3':'c6a869',2);
  }
+ }
  for(const [i,a] of pads.entries()){
   const xl=a.x-a.w*.5,xr=a.x+a.w*.5,l=a.z-a.d*.5,r=a.z+a.d*.5,y=a.y, main=a.kind==='start'||a.kind==='exit';
   if(main||a.kind==='save'){
@@ -113,6 +115,7 @@ function hall(pads){
    box(xr-.38,y+.75,r-.35,xr-.1,y+.96,r-.07,'8ff2d0',2);
   }
  }
+ if(onlyPads)return B;
  // Door and a little sign with hand-built letters.
  box(-1.57,.45,68.37,1.57,4.13,68.9,'3e656d');
  box(-1.39,.5,68.24,1.39,3.96,68.45,'8edcb4',2);
@@ -155,7 +158,7 @@ function creature(){
  }
  // Concave facial cuts made in the actual pumpkin mesh.
  const eye=[[.125,2.30],[.615,2.46],[.485,2.22],[.252,2.205]];
- const mouth=[[-.10,2.135],[.067,2.145],[.149,1.99],[.086,1.76],[.035,1.72],[-.074,1.77],[-.135,1.96]];
+ const mouth=[[-.25,2.13],[.25,2.13],[.29,1.99],[.15,1.73],[0,1.65],[-.15,1.73],[-.29,1.99]];
  const inside=(x,y,poly)=>{let ok=false;for(let i=0,j=poly.length-1;i<poly.length;j=i++){const a=poly[i],b=poly[j];if((a[1]>y)!==(b[1]>y)&&x<(b[0]-a[0])*(y-a[1])/(b[1]-a[1])+a[0])ok=!ok;}return ok};
  const taper=t=>.92+.12*sin(t)-.16*cos(t);
  const head=(t,v)=>{
@@ -177,14 +180,15 @@ function creature(){
  function tooth(x,y,z,w,h,hue){tri([x-w,y,z],[x+w,y,z],[x+.01,y-h,z-.037],color(hue),0,[0,0,-1]);}
  for(const s of [-1,1]){
   const p=(x,y,z)=>[s*x,y,z];
-  quad(p(.187,2.289,-.381),p(.56,2.416,-.241),p(.447,2.271,-.31),p(.256,2.243,-.35),color('ff973b'),2,[0,0,-1]);
-  tri(p(.262,2.279,-.394),p(.522,2.371,-.266),p(.409,2.277,-.335),color('ffce66'),2,[0,0,-1]);
+  quad(p(.187,2.289,-.381),p(.56,2.416,-.241),p(.447,2.271,-.31),p(.256,2.243,-.35),color('ff3420'),2,[0,0,-1]);
+  tri(p(.262,2.279,-.394),p(.522,2.371,-.266),p(.409,2.277,-.335),color('fff2b0'),2,[0,0,-1]);
   oval(s*.365,2.304,-.364,.028,.04,.018,'61272a',0,0,9,6);
  }
- for(let f=0;f<3;f++)tooth(-.062+f*.058,2.092-.02*abs(f-1),-.358,.020,.077-f*.01,'e4bd84');
- for(let f=0;f<3;f++)tooth(-.038+f*.042,1.806+.009*abs(f-1),-.29,.015,-.053,'cba76e');
+ for(let f=0;f<7;f++)tooth(-.21+f*.07,2.105-.012*abs(f-3),-.45,.027,.13+.025*(f%2),'e4bd84');
+ for(let f=0;f<5;f++)tooth(-.14+f*.07,1.81+.016*abs(f-2),-.36,.026,-.12,'cba76e');
  oval(-.039,3.107,.023,.109,.226,.113,'52563b',0,-.28,12,8);
  oval(.05,3.274,.031,.092,.134,.083,'696b44',0,-.49,12,8);
+ for(const side of [-1,1]){for(let j=0;j<4;j++){const x=side*(1.23+j*.105);tri([x-.035,.25-j*.035,-.66],[x+.035,.25-j*.035,-.66],[x+side*.08,-.09-j*.035,-.84],color('e5d1a5'),0,[0,0,-1]);} for(let j=0;j<3;j++){const x=side*(.28+j*.11);tri([x,2.51,-.43],[x+side*.07,2.49,-.40],[x-side*.05,2.77,-.33],color('351e1a'),0,[0,0,-1]);}}
  for(let i=0;i<B.data.length;i+=10){if(B.data[i+1]>1.66){B.data[i]*=.94;B.data[i+1]=1.66+(B.data[i+1]-1.66)*1.12;}}
  return B;
 }
@@ -254,7 +258,7 @@ void main(){
  vec3 dim=vec3(.041,.108,.136);
  gl_FragColor=vec4(mix(lit,dim,fog*.88),1.0);
 }`;
-function glEngine(canvas,world,monster){
+function glEngine(canvas,world,monster,padMeshes){
  const gl=canvas.getContext('webgl',{alpha:false,antialias:true,premultipliedAlpha:false,powerPreference:'high-performance'});
  if(!gl)return;
  function compile(type,src){const shader=gl.createShader(type);gl.shaderSource(shader,src);gl.compileShader(shader);if(!gl.getShaderParameter(shader,gl.COMPILE_STATUS))throw Error(gl.getShaderInfoLog(shader));return shader}
@@ -263,7 +267,7 @@ function glEngine(canvas,world,monster){
  const attrs=['aPos','aNorm','aColor','aMat'].map(k=>gl.getAttribLocation(p,k));
  const u=Object.fromEntries(['uCam','uView','uObj','uAnim'].map(k=>[k,gl.getUniformLocation(p,k)]));
  function mesh(B){const buf=gl.createBuffer();gl.bindBuffer(gl.ARRAY_BUFFER,buf);gl.bufferData(gl.ARRAY_BUFFER,new Float32Array(B.data),gl.STATIC_DRAW);return [buf,B.data.length/10]}
- const A=mesh(world),M=mesh(monster);
+ const A=mesh(world),M=mesh(monster),P=padMeshes.map(({a,b})=>({a,mesh:mesh(b)}));
  function render(obj){
   gl.bindBuffer(gl.ARRAY_BUFFER,obj[0]);
   for(let i=0;i<4;i++){gl.enableVertexAttribArray(attrs[i]);gl.vertexAttribPointer(attrs[i],i===3?1:3,gl.FLOAT,false,40,i*12)}
@@ -274,10 +278,11 @@ function glEngine(canvas,world,monster){
   const sy=(aspect<.8?1.04:1.50),sx=sy/aspect;
   gl.uniform4f(u.uCam,cam.x,cam.y,cam.z,cam.yaw);gl.uniform4f(u.uView,cam.pitch,sx,sy,0);
   gl.uniform4f(u.uObj,0,0,0,0);gl.uniform3f(u.uAnim,t,0,0);render(A);
+  for(const {a,mesh} of P){gl.uniform4f(u.uObj,a.x-a.homeX,0,a.z-a.homeZ,0);render(mesh);}
   gl.uniform4f(u.uObj,m.x,m.y,m.z,m.yaw);gl.uniform3f(u.uAnim,t,1,m.threat);render(M);
  };
 }
-function swEngine(canvas,world,monster){
+function swEngine(canvas,world,monster,padMeshes){
  const c=canvas.getContext('2d',{alpha:false});
  if(!c)return ()=>{};
  const buffer=document.createElement('canvas'),out=buffer.getContext('2d',{alpha:false});
@@ -297,7 +302,7 @@ function swEngine(canvas,world,monster){
   }
   return t;
  }
- const a=prep(world),b=prep(monster),near=.09;
+ const a=prep(world),b=prep(monster),P=padMeshes.map(({a,b})=>({a,list:prep(b)})),near=.09;
  function paint(x0,y0,q0,x1,y1,q1,x2,y2,q2,col){
   const L=Math.max(0,Math.ceil(Math.min(x0,x1,x2)-.5)),R=Math.min(w-1,Math.floor(Math.max(x0,x1,x2)-.5));
   const T=Math.max(0,Math.ceil(Math.min(y0,y1,y2)-.5)),B=Math.min(h-1,Math.floor(Math.max(y0,y1,y2)-.5));
@@ -367,6 +372,7 @@ function swEngine(canvas,world,monster){
   else{
    pixels.fill(clearColor);zbuf.fill(0);render(a,null);cacheCam={...cam};cachePixels.set(pixels);cacheDepth.set(zbuf);
   }
+  for(const {a,list} of P)render(list,{x:a.x-a.homeX,y:0,z:a.z-a.homeZ,yaw:0,threat:0});
   render(b,obj);
   const du=1/f,fx=sx*cp,fz=sy*cp;
   for(let y=0;y<h;y++){
@@ -383,5 +389,5 @@ function swEngine(canvas,world,monster){
   out.putImageData(image,0,0);c.drawImage(buffer,0,0,canvas.width,canvas.height);
  };
 }
-window.PumpkinScene=(canvas,pads)=>{const a=hall(pads),b=creature();try{const draw=glEngine(canvas,a,b);if(draw)return draw;}catch(e){console.error('WebGL:',e.message)}return swEngine(canvas,a,b);};
+window.PumpkinScene=(canvas,pads)=>{const a=hall(pads.filter(p=>p.kind)),b=creature(),P=pads.filter(p=>!p.kind).map(a=>({a,b:hall([a],true)}));try{const draw=glEngine(canvas,a,b,P);if(draw)return draw;}catch(e){console.error('WebGL:',e.message)}return swEngine(canvas,a,b,P);};
 })();

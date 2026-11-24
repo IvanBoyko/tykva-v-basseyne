@@ -18,19 +18,33 @@ const pads=[
 ];
 // One last stepping stone keeps the final bank within reach.
 pads.splice(11,0,{x:-.45,z:59.92,w:3.74,d:2.5,y:.39});
+// Independent bounded paths: each moving pad stays in its own longitudinal lane.
+for(const [i,a] of pads.entries()){
+ a.homeX=a.x;a.homeZ=a.z;
+ a.ax=a.kind?0:(i%2?1.15:.42);
+ a.az=a.kind?0:(i%2?.12:.48);
+ a.phase=i*1.7;a.rate=.65+(i%3)*.13;
+}
+function movePads(t,carry){
+ for(const a of pads){
+  const x=a.homeX+a.ax*sin(t*a.rate+a.phase),z=a.homeZ+a.az*sin(t*a.rate+a.phase+.8);
+  if(carry&&p.ground&&p.land===a){p.x+=x-a.x;p.z+=z-a.z;}
+  a.x=x;a.z=z;
+ }
+}
 const scene=window.PumpkinScene(cv,pads);
 const keys=new Set();let p,m,mode='menu',clock=0,played=0,last=0,scale=1,aspect=1,acc=0,checkpoint=false,best=0,hint='',hintLeft=0,jumpQueued=0,ui='',soundOn=false,audio=null,wasLocked=false;
 let swipe=null,stick=null,jumpId=null,move={x:0,z:0},scare=null,lastBeat=0;
 const coarse=()=>matchMedia('(pointer:coarse)').matches||navigator.maxTouchPoints>0&&window.innerWidth<=950;
 const reduced=matchMedia('(prefers-reduced-motion:reduce)').matches;
 const boxes={
- menu:['Ночной заплыв · 3D','Тыква в <em>бассейне</em>','Перепрыгивай с платформы на платформу. Тронешь воду — он услышит всплеск.','Начать игру'],
+ menu:['Ночной заплыв · 3D','Тыква в <em>бассейне</em>','Прыгай по движущимся платформам. Осторожно: в воде прячется монстр! Есть внезапный скример. Звук можно выключить.','Начать игру'],
  paused:['Ночной заплыв','Пауза','Лучше не задерживаться. Он всё ещё там.','Продолжить'],
  caught:['В воде было что-то…','Он тебя <em>поймал!</em>','Если упадёшь в воду, подплыви к платформе и нажми «Прыжок», чтобы забраться на неё.','Попробовать снова'],
  win:['Побег удался','Ты <em>выбрался!</em>','Дверь позади захлопнулась. Тыква осталась в бассейне.','Сыграть ещё']
 };
 function reset(resume=false){
- if(!resume){checkpoint=false;best=0;played=0;}
+ if(!resume){checkpoint=false;best=0;played=0;} movePads(played,false);
  const a=resume?pads.find(a=>a.kind==='save'):pads[0],z=resume?a.z-.67:-1.25;
  p={x:0,y:a.y,z,yaw:0,pitch:-.17,vx:0,vz:0,vy:0,ground:true,land:a,wet:false,wetAge:0,coyote:.1,bob:0,climbDelay:0};
  m={x:2.52,y:-1.02,z:z+7.2,yaw:.38,chase:0,speed:0,side:1,kick:0};
@@ -51,7 +65,7 @@ function clearControls(){
  $('nub').style.transform='';$('jump').classList.remove('active');
 }
 function setMode(next){
- mode=next;ui='';clearControls();
+ mode=next;ui='';clearControls();delete stage.dataset.scare;
  stage.dataset.mode=next; $('overlay').hidden=next==='play';$('touchControls').hidden=next!=='play'||!coarse();$('pause').disabled=next!=='play';
  if(next!=='play'){
   if(document.pointerLockElement===look&&document.exitPointerLock)document.exitPointerLock();
@@ -140,7 +154,7 @@ function beep(kind){
  if(!soundOn)return;
  try{
   audio??=new (window.AudioContext||window.webkitAudioContext)();if(audio.state==='suspended')audio.resume().catch(()=>{});
-  const table={jump:[225,377,.12,'sine',.10],step:[110,64,.095,'triangle',.032],splash:[180,42,.42,'triangle',.19],caught:[147,38,.65,'sawtooth',.14],pulse:[76,35,.20,'sine',.18],save:[480,770,.34,'sine',.16],win:[503,988,.62,'triangle',.14]};
+  const table={jump:[225,377,.12,'sine',.10],step:[110,64,.095,'triangle',.032],splash:[180,42,.42,'triangle',.19],caught:[340,54,.85,'sawtooth',.13],pulse:[76,35,.20,'sine',.18],save:[480,770,.34,'sine',.16],win:[503,988,.62,'triangle',.14]};
   const [a,b,len,w,amp]=table[kind],t=audio.currentTime,o=audio.createOscillator(),g=audio.createGain();o.type=w;o.frequency.setValueAtTime(a,t);o.frequency.exponentialRampToValueAtTime(b,t+len);
   g.gain.setValueAtTime(.0001,t);g.gain.exponentialRampToValueAtTime(amp,t+.014);g.gain.exponentialRampToValueAtTime(.0001,t+len);
   o.connect(g).connect(audio.destination);o.start(t);o.stop(t+len+.01);
@@ -164,11 +178,11 @@ function land(a){
 }
 function caught(){
  const ang=Math.atan2(m.x-p.x,m.z-p.z),camY=p.y+1.57;
- scare={origin:{x:p.x,y:camY,z:p.z,yaw:p.yaw,pitch:p.pitch},t:0,target:{x:clamp(p.x-sin(ang)*.58,-8,8),y:1.32,z:clamp(p.z-cos(ang)*.58,1.9,62.2),yaw:ang-(aspect<.8?0:.33),pitch:.36},m:{...m,y:-.46,threat:1}};
- beep('caught');setMode('caught');
+ scare={origin:{x:p.x,y:camY,z:p.z,yaw:p.yaw,pitch:p.pitch},t:0,target:{x:clamp(m.x-sin(ang)*1.18,-8,8),y:1.42,z:clamp(m.z-cos(ang)*1.18,1.9,62.2),yaw:ang,pitch:.32},m:{...m,y:-.46,threat:1}};
+ beep('caught');setMode('caught');stage.dataset.scare='true';$('overlay').hidden=true;
 }
 function step(dt){
- played+=dt;hintLeft=Math.max(0,hintLeft-dt);jumpQueued=Math.max(0,jumpQueued-dt);p.climbDelay=Math.max(0,p.climbDelay-dt);
+ played+=dt;movePads(played,true);hintLeft=Math.max(0,hintLeft-dt);jumpQueued=Math.max(0,jumpQueued-dt);p.climbDelay=Math.max(0,p.climbDelay-dt);
  const down=k=>keys.has(k)?1:0;
  const yawKeys=down('ArrowRight')-down('ArrowLeft');
  const pitchKeys=down('ArrowUp')-down('ArrowDown');
@@ -241,7 +255,7 @@ function frame(ts){
   mm={x:2.73,y:-.23+sin(clock*1.7)*.08,z:5.0,yaw:.36+sin(clock*1.75)*.04,threat:.28};
  }
  if(mode==='caught'&&scare){
-  scare.t+=ms;const t=reduced?1:1-Math.exp(-scare.t*13);
+  scare.t+=ms;if(scare.t>=1.15){delete stage.dataset.scare;$('overlay').hidden=false;} const t=reduced?1:1-Math.exp(-scare.t*19);
   cam={x:mix(scare.origin.x,scare.target.x,t),y:mix(scare.origin.y,scare.target.y,t),z:mix(scare.origin.z,scare.target.z,t),yaw:lerpAngle(scare.origin.yaw,scare.target.yaw,t),pitch:mix(scare.origin.pitch,scare.target.pitch,t)};
   mm={...scare.m,yaw:Math.atan2(scare.m.x-cam.x,scare.m.z-cam.z)};
  }
