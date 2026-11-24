@@ -27,12 +27,16 @@ for(const [i,a] of pads.entries()){
 }
 function movePads(t,carry){
  for(const a of pads){
-  const x=a.homeX+a.ax*sin(t*a.rate+a.phase),z=a.homeZ+a.az*sin(t*a.rate+a.phase+.8);
+  const x=a.homeX+a.ax*sin(t*a.rate*(level===3?1.65:1)+a.phase),z=a.homeZ+a.az*sin(t*a.rate*(level===3?1.65:1)+a.phase+.8);
   if(carry&&p.ground&&p.land===a){p.x+=x-a.x;p.z+=z-a.z;}
   a.x=x;a.z=z;
  }
 }
+let level=1;const totalLevels=3;
 const scene=window.PumpkinScene(cv,pads);
+const arrows=document.createElement('div');arrows.style.cssText='position:absolute;inset:0;pointer-events:none;z-index:2;overflow:hidden';stage.appendChild(arrows);
+const markers=pads.filter(a=>!a.kind).map((a,i)=>{a.dir=[[1,0],[0,1],[-1,0],[0,-1]][i%4];const e=document.createElement('span');e.textContent='➜';e.style.cssText='position:absolute;color:#ffdc76;font:bold 32px system-ui;text-shadow:0 2px 5px black;transform-origin:center;';arrows.appendChild(e);return {a,e};});
+function drawArrows(cam){arrows.hidden=level!==2||mode!=='play';if(arrows.hidden)return;const w=stage.clientWidth,h=stage.clientHeight,f=h*(aspect<.8?.52:.75);function project(x,y,z){x-=cam.x;y-=cam.y;z-=cam.z;const along=sin(cam.yaw)*x+cos(cam.yaw)*z,depth=sin(cam.pitch)*y+cos(cam.pitch)*along;return [w/2+f*(cos(cam.yaw)*x-sin(cam.yaw)*z)/depth,h/2-f*(cos(cam.pitch)*y-sin(cam.pitch)*along)/depth,depth];}for(const {a,e} of markers){const A=project(a.x,a.y+.08,a.z),B=project(a.x+a.dir[0]*.6,a.y+.08,a.z+a.dir[1]*.6);e.hidden=A[2]<.3||B[2]<.3;if(!e.hidden){e.style.left=A[0]+'px';e.style.top=A[1]+'px';e.style.transform='translate(-50%,-50%) rotate('+Math.atan2(B[1]-A[1],B[0]-A[0])+'rad) scale('+clamp(3/A[2],.25,2)+')';}}}
 const keys=new Set();let p,m,mode='menu',clock=0,played=0,last=0,scale=1,aspect=1,acc=0,checkpoint=false,best=0,hint='',hintLeft=0,jumpQueued=0,ui='',soundOn=true,audio=null,wasLocked=false;
 let swipe=null,stick=null,jumpId=null,move={x:0,z:0},scare=null,lastBeat=0;
 const coarse=()=>matchMedia('(pointer:coarse)').matches||navigator.maxTouchPoints>0&&window.innerWidth<=950;
@@ -41,6 +45,7 @@ const boxes={
  menu:['Ночной заплыв · 3D','Тыква в <em>бассейне</em>','Прыгай по движущимся платформам. Осторожно: в воде прячется монстр! Есть внезапный скример. Звук можно выключить.','Начать игру'],
  paused:['Ночной заплыв','Пауза','Лучше не задерживаться. Он всё ещё там.','Продолжить'],
  caught:['В воде было что-то…','Он тебя <em>поймал!</em>','Если упадёшь в воду, подплыви к платформе и нажми «Прыжок», чтобы забраться на неё.','Попробовать снова'],
+ next:['Уровень пройден','Следующий <em>уровень</em>','Готов к новому испытанию?','Продолжить'],
  win:['Побег удался','Ты <em>выбрался!</em>','Дверь позади захлопнулась. Тыква осталась в бассейне.','Сыграть ещё']
 };
 function reset(resume=false){
@@ -79,8 +84,9 @@ function enableMouse(){
 $('go').onclick=()=>{
  const prev=mode;
  if(soundOn){try{audio??=new (window.AudioContext||window.webkitAudioContext)();audio.resume().catch(()=>{});}catch{}}
+ if(prev==='next')level++;else if(prev==='win')level=1;
  if(prev!=='paused')reset(prev==='caught'&&checkpoint);
- setMode('play');enableMouse();
+ setMode('play');enableMouse();if(prev==='next')say(level===2?'Стрелки сдвигают тебя! Не стой на месте.':'Платформы и монстр стали быстрее!',5);
  if(prev==='menu')say(coarse()?'Левой рукой двигайся, правой осматривайся. Жми кнопку со стрелкой, чтобы прыгнуть.':'W A S D — ходьба. Мышь — обзор. Пробел — прыжок.',3.4);
  if(prev==='caught'&&checkpoint)say('Спасательный островок. Продолжаем отсюда.',2.6);
 };
@@ -155,6 +161,7 @@ function beep(kind){
  if(!soundOn)return;
  try{
   audio??=new (window.AudioContext||window.webkitAudioContext)();if(audio.state==='suspended')audio.resume().catch(()=>{});
+  if(kind==='caught'){const t=audio.currentTime,len=.95,buffer=audio.createBuffer(1,Math.floor(audio.sampleRate*len),audio.sampleRate),d=buffer.getChannelData(0);let phase=0;for(let i=0;i<d.length;i++){const x=i/audio.sampleRate;phase+=TAU*(190+110*sin(x*9)+28*sin(x*83))/audio.sampleRate;const env=Math.min(1,x/.035)*Math.pow(1-x/len,1.3);d[i]=env*(.45*sin(phase)+.23*sin(phase*2.01)+.13*sin(phase*3.04)+.19*(Math.random()*2-1));}const src=audio.createBufferSource(),filter=audio.createBiquadFilter(),gain=audio.createGain();src.buffer=buffer;filter.type='bandpass';filter.frequency.value=950;filter.Q.value=.65;gain.gain.value=.48;src.connect(filter).connect(gain).connect(audio.destination);src.start(t);return;}
   const table={jump:[225,377,.12,'sine',.10],step:[110,64,.095,'triangle',.032],splash:[180,42,.42,'triangle',.19],caught:[420,48,.85,'sawtooth',.22],pulse:[76,35,.20,'sine',.18],save:[480,770,.34,'sine',.16],win:[503,988,.62,'triangle',.14]};
   const [a,b,len,w,amp]=table[kind],t=audio.currentTime,o=audio.createOscillator(),g=audio.createGain();o.type=w;o.frequency.setValueAtTime(a,t);o.frequency.exponentialRampToValueAtTime(b,t+len);
   g.gain.setValueAtTime(.0001,t);g.gain.exponentialRampToValueAtTime(amp,t+.014);g.gain.exponentialRampToValueAtTime(.0001,t+len);
@@ -188,6 +195,7 @@ function step(dt){
  const rx=move.x+down('KeyD')-down('KeyA'),rz=move.z+down('KeyW')-down('KeyS'),l=Math.max(1,Math.hypot(rx,rz)), s=sin(p.yaw),c=cos(p.yaw);
  const speed=p.wet?3.48:7.65, accel=p.wet?11:p.ground?17:10, f=Math.min(1,dt*accel);
  p.vx=mix(p.vx,(rx*c+rz*s)*speed/l,f);p.vz=mix(p.vz,(rz*c-rx*s)*speed/l,f);
+ if(level===2&&p.ground&&p.land?.dir){p.x+=p.land.dir[0]*2.5*dt;p.z+=p.land.dir[1]*2.5*dt;}
  p.x=clamp(p.x+p.vx*dt,-8.05,8.05);p.z=clamp(p.z+p.vz*dt,-7.9,68.0);
  if(p.wet){
   p.wetAge+=dt;
@@ -203,7 +211,7 @@ function step(dt){
   }
   if(p.wet){
    const dx=p.x-m.x,dz=p.z-m.z,d=Math.hypot(dx,dz);
-   m.kick=Math.max(0,m.kick-dt);m.speed=mix(m.speed,m.kick>0?1.0:9.25,Math.min(1,dt*3.5));
+   m.kick=Math.max(0,m.kick-dt);m.speed=mix(m.speed,m.kick>0?1.0:level===3?12:9.25,Math.min(1,dt*3.5));
    const amount=Math.min(d,m.speed*dt)/Math.max(.001,d);
    m.x+=dx*amount;m.z+=dz*amount;m.y=mix(m.y,-.40,Math.min(1,dt*6.9));m.chase=mix(m.chase,1,Math.min(1,dt*7));
    if(p.wetAge-lastBeat>.46&&p.wetAge>.21){lastBeat=p.wetAge;beep('pulse')}
@@ -233,14 +241,14 @@ function step(dt){
  if(p.ground&&moving>1.2){const prev=p.bob;p.bob+=moving*dt*1.65;if(Math.floor(prev/Math.PI)!==Math.floor(p.bob/Math.PI))beep('step')}
  else if(p.wet)p.bob+=dt*6;
  best=Math.max(best,Math.min(99,Math.floor((p.z+1.25)/68.75*100)));
- if(p.z>=67.0&&Math.abs(p.x)<1.8&&p.ground){best=100;beep('win');setMode('win')}
+ if(p.z>=67.0&&Math.abs(p.x)<1.8&&p.ground){best=100;beep('win');setMode(level<totalLevels?'next':'win')}
 }
 function updateHUD(){
  const danger=p.wet&&mode==='play', pos=mode==='win'?'Выход найден':mode==='menu'?'Берег безопасен':mode==='caught'?'Монстр догнал':p.wet?'Он идёт на всплеск!':p.ground?'На платформе':'В прыжке';
  const msg=mode==='play'?(danger?'К платформе! Нажми «Прыжок», чтобы вылезти.':hintLeft>0?hint:''):'';
  const str=[mode,pos,best,danger,msg].join('|');if(ui===str)return;ui=str;
  stage.dataset.wet=String(danger||mode==='caught');$('status').dataset.danger=String(danger);$('statusText').textContent=pos;
- $('progressText').textContent='Путь '+best+'%';$('bar').style.width=best+'%';$('hint').textContent=msg;$('hint').hidden=!msg;
+ $('progressText').textContent='Ур. '+level+' / '+totalLevels+' · '+best+'%';$('bar').style.width=best+'%';$('hint').textContent=msg;$('hint').hidden=!msg;
 }
 function frame(ts){
  const ms=last?Math.min(.1,(ts-last)/1000):0;last=ts;
@@ -258,6 +266,6 @@ function frame(ts){
   mm={...scare.m,yaw:Math.atan2(scare.m.x-cam.x,scare.m.z-cam.z)};
  }
  if(cv.width&&cv.height)scene(cam,mm,clock,aspect);
- updateHUD();requestAnimationFrame(frame);
+ drawArrows(cam);updateHUD();requestAnimationFrame(frame);
 }
 requestAnimationFrame(frame);
