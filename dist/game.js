@@ -161,7 +161,7 @@ function beep(kind){
  if(!soundOn)return;
  try{
   audio??=new (window.AudioContext||window.webkitAudioContext)();if(audio.state==='suspended')audio.resume().catch(()=>{});
-  if(kind==='caught'){const t=audio.currentTime,len=.95,buffer=audio.createBuffer(1,Math.floor(audio.sampleRate*len),audio.sampleRate),d=buffer.getChannelData(0);let phase=0;for(let i=0;i<d.length;i++){const x=i/audio.sampleRate;phase+=TAU*(190+110*sin(x*9)+28*sin(x*83))/audio.sampleRate;const env=Math.min(1,x/.035)*Math.pow(1-x/len,1.3);d[i]=env*(.45*sin(phase)+.23*sin(phase*2.01)+.13*sin(phase*3.04)+.19*(Math.random()*2-1));}const src=audio.createBufferSource(),filter=audio.createBiquadFilter(),gain=audio.createGain();src.buffer=buffer;filter.type='bandpass';filter.frequency.value=950;filter.Q.value=.65;gain.gain.value=.48;src.connect(filter).connect(gain).connect(audio.destination);src.start(t);return;}
+  if(kind==='caught'){const t=audio.currentTime,len=.95,buffer=audio.createBuffer(1,Math.floor(audio.sampleRate*len),audio.sampleRate),d=buffer.getChannelData(0);let phase=0;for(let i=0;i<d.length;i++){const x=i/audio.sampleRate;phase+=TAU*(290+150*sin(x*8)+45*sin(x*83))/audio.sampleRate;const env=Math.min(1,x/.035)*Math.pow(1-x/len,1.3);d[i]=env*(.45*sin(phase)+.23*sin(phase*2.01)+.13*sin(phase*3.04)+.19*(Math.random()*2-1));}const src=audio.createBufferSource(),filter=audio.createBiquadFilter(),gain=audio.createGain();src.buffer=buffer;filter.type='bandpass';filter.frequency.value=1450;filter.Q.value=.85;gain.gain.value=.58;src.connect(filter).connect(gain).connect(audio.destination);src.start(t);return;}
   const table={jump:[225,377,.12,'sine',.10],step:[110,64,.095,'triangle',.032],splash:[180,42,.42,'triangle',.19],caught:[420,48,.85,'sawtooth',.22],pulse:[76,35,.20,'sine',.18],save:[480,770,.34,'sine',.16],win:[503,988,.62,'triangle',.14]};
   const [a,b,len,w,amp]=table[kind],t=audio.currentTime,o=audio.createOscillator(),g=audio.createGain();o.type=w;o.frequency.setValueAtTime(a,t);o.frequency.exponentialRampToValueAtTime(b,t+len);
   g.gain.setValueAtTime(.0001,t);g.gain.exponentialRampToValueAtTime(amp,t+.014);g.gain.exponentialRampToValueAtTime(.0001,t+len);
@@ -261,9 +261,9 @@ function frame(ts){
   mm={x:2.73,y:-.23+sin(clock*1.7)*.08,z:5.0,yaw:.36+sin(clock*1.75)*.04,threat:.28};
  }
  if(mode==='caught'&&scare){
-  scare.t+=ms;if(scare.t>=1.15){delete stage.dataset.scare;$('overlay').hidden=false;} const t=reduced?1:1-Math.exp(-scare.t*19);
+  scare.t+=ms;if(scare.t>=1.65){delete stage.dataset.scare;$('overlay').hidden=false;} const t=reduced?1:1-Math.exp(-scare.t*28);
   cam={x:mix(scare.origin.x,scare.target.x,t),y:mix(scare.origin.y,scare.target.y,t),z:mix(scare.origin.z,scare.target.z,t),yaw:lerpAngle(scare.origin.yaw,scare.target.yaw,t),pitch:mix(scare.origin.pitch,scare.target.pitch,t)};
-  mm={...scare.m,yaw:Math.atan2(scare.m.x-cam.x,scare.m.z-cam.z)};
+  mm={...scare.m,yaw:Math.atan2(scare.m.x-cam.x,scare.m.z-cam.z)}; if(scare.t<1.65){const lunge=reduced?0:.32*Math.sin(Math.min(1,scare.t/.24)*Math.PI/2);mm.x-=sin(mm.yaw)*lunge;mm.z-=cos(mm.yaw)*lunge;mm.y+=.12;cam.pitch=.45;}
  }
  if(cv.width&&cv.height)scene(cam,mm,clock,aspect);
  drawArrows(cam);updateHUD();requestAnimationFrame(frame);
